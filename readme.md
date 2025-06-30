@@ -220,8 +220,7 @@ Each experiment can be executed in two ways:
 - **As a standalone process**, by running the corresponding Python script with a set of parameters (e.g., via CLI).
 - **As a library call**, by importing and invoking the experiment function directly from another script or notebook.
 
-When running multiple experiments in parallel (e.g., different configurations or datasets),  
-each experiment is executed as an **independent process**, allowing parallel execution across multiple CPU cores.
+When running multiple experiments in parallel (e.g., different configurations or datasets), each experiment is executed as an **independent process**, allowing parallel execution across multiple CPU cores.
 
 This hybrid design offers both flexibility (for interactive testing) and scalability (for batch execution).
 
@@ -247,8 +246,7 @@ knn_tool.combine_knn_multiple_v3(all_knn_experiments_file_path)
 
 ### ▶️ KNN – Running a Single Experiment
 
-You can run a single experiment configuration in two ways:  
-as an individual **process** or as a direct **library function call**.
+You can run a single experiment configuration in two ways: as an individual **process** or as a direct **library function call**.
 
 ---
 
@@ -280,8 +278,7 @@ The knn_results is a dictionary that includes detailed evaluation metrics, such 
 
 ### 🔁 Running All KNN Experiments (with Repeats)
 
-You can run all experiment configurations from the CSV file in multiple rounds,  
-e.g. for statistical analysis or robustness testing.
+You can run all experiment configurations from the CSV file in multiple rounds, e.g. for statistical analysis or robustness testing.
 
 ```python
 # Execute all configurations from the generated experiment file
@@ -305,10 +302,8 @@ for i in range(repeat_no):
 ```
 Each round will process all configurations in parallel (using threads) and save the results to a separate output file (one per round).
 
-> 🔄 **Note:** To extend the dataset across all segmentations of the same duration,  
-> you can use the special segmentation format `(10, all)`.  
-> This will combine all available segmentations with a length of 10 seconds, regardless of overlap,  
-> into a single dataset. This is useful for increasing sample diversity and improving generalization.
+> 🔄 **Note:** To extend the dataset across all segmentations of the same duration, you can use the special segmentation format `(10, all)`.  
+> This will combine all available segmentations with a length of 10 seconds, regardless of overlap, into a single dataset. This is useful for increasing sample diversity and improving generalization.
 
 
 ### ⚡ FAISS Experiments
@@ -322,8 +317,7 @@ Each experiment combines dataset-related parameters (features, segmentations, ag
 
 ### 🔧 Preparing FAISS experiment configurations
 
-Experiments are generated **per index type**. For each type (e.g., `ivf`, `flat`, `hnsw`), a predefined list of index parameters is available.  
-These can be extended or customized in the code.
+Experiments are generated **per index type**. For each type (e.g., `ivf`, `flat`, `hnsw`), a predefined list of index parameters is available. These can be extended or customized in the code.
 
 Example: generating all experiments for IVF indexes.
 
@@ -381,8 +375,7 @@ The `faiss_results` is a dictionary that includes detailed evaluation metrics, s
 
 ### 🔁 Running All FAISS Experiments (with Repeats)
 
-You can run all experiment configurations from the CSV file in multiple rounds,  
-e.g. for statistical analysis or robustness testing.
+You can run all experiment configurations from the CSV file in multiple rounds, e.g. for statistical analysis or robustness testing.
 
 ```python
 # Execute all configurations from the generated experiment file
@@ -397,7 +390,7 @@ lib.combine_multiple_parameters_v3(all_faiss_experiments_file_path, ex_cfg.ivf_a
 for i in range(repeat_no):
     print(f"Execute round {i}")
 
-    #you can cache the indexes before if you want
+    #you can cache the indexes before prediction
     #cache_all_faiss_indexes(all_faiss_experiments_file_path)
     
     faiss_experiments_output_file = GlobalVars.experiments_path + f"executed_faiss_experiments_index_{index_type}_round{i}.csv"
@@ -405,7 +398,5 @@ for i in range(repeat_no):
 ```
 Each round will process all configurations in parallel (using threads) and save the results to a separate output file (one per round).
 
-> 🔄 **Note:** To extend the dataset across all segmentations of the same duration,  
-> you can use the special segmentation format `(10, all)`.  
-> This will combine all available segmentations with a length of 10 seconds, regardless of overlap,  
-> into a single dataset. This is useful for increasing sample diversity and improving generalization.
+> 🔄 **Note:** To extend the dataset across all segmentations of the same duration, you can use the special segmentation format `(10, all)`.  
+> This will combine all available segmentations with a length of 10 seconds, regardless of overlap, into a single dataset. This is useful for increasing sample diversity and improving generalization.
