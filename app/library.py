@@ -58,7 +58,7 @@ class ExperimentConfig:
             "params": index_specific_params
         }
         if ("neighbors" in cfg_dict):
-            self._INDEX_PARAMS['params']['neighbors'] = cfg_dict.get("neighbors")
+            self._INDEX_PARAMS['params']['neighbors'] = int(cfg_dict.get("neighbors"))
         self._SEARCH_PARAMS = cfg_dict.get('search_params', {})       
         self._SEGMENT_LENGHT = cfg_dict.get('segment_lenght', None)       
         self._SEGMENT_OVERLAP = cfg_dict.get('segment_overlap', None)   
@@ -119,7 +119,6 @@ class GlobalVars:
     faiss_results_path = current_dir + os.sep + '..' +  os.sep + 'faiss_results' + os.sep
     faiss_index_cache_path = current_dir + os.sep + '..' +  os.sep + 'faiss_index' + os.sep
     
-    print("dataset_path=", dataset_path)
     soundfiles_path = dataset_path + 'sound_files' + os.sep
     mfcc_img_path = dataset_path + 'mfcc_img' + os.sep
     

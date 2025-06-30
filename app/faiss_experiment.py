@@ -230,7 +230,7 @@ def execute_and_test_faiss(X_train, y_train, X_test, y_test, cfg):
     
     nprobe = cfg._INDEX_PARAMS["params"].get("nprobe", None)        
     if (not nprobe is None):
-        print(f"set nproble={nprobe}")
+        print(f"set nprobe={nprobe}", type(nprobe))
         index.nprobe = nprobe
         
     efSearch = cfg._INDEX_PARAMS["params"].get("efSearch", None)  

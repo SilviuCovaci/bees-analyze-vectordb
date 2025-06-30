@@ -8,7 +8,7 @@ This repository contains the source code for the dissertation project titled
 ## 📦 Clone this repository
 
 ```bash
-git clone https://github.com/nume-utilizator/bees-analyze-vectordb.git
+git clone https://github.com/SilviuCovaci/bees-analyze-vectordb.git
 cd bees-analyze-vectordb
 ```
 
@@ -342,3 +342,39 @@ lib.combine_multiple_parameters_v3(
 )
 ```
 🛠️ You can customize or extend the list of index parameters in the ex_cfg.<index_type> dictionary.
+
+### ▶️ FAISS – Running Experiments
+
+FAISS experiments can be executed in a similar way to KNN, using three approaches:
+
+1. **Single configuration as a separate process**  
+2. **Single configuration as a direct function call**  
+3. **Multiple configurations in parallel**, by reading from a CSV file
+
+---
+
+#### 🔹 1. Run one configuration as a separate process
+
+```python
+# Execute ONE configuration by launching it as an independent process
+cfg_records=pd.read_csv(all_faiss_experiments_file_path)
+row = cfg_records.iloc[0].copy()
+new_row = executor.launch_execute_configurations_as_process(
+    faiss_tool,
+    row,
+)
+```
+The result represents a row from the results CSV file and includes evaluation metrics such as accuracy and per-class precision, as well as performance measurements for both the training and prediction steps.
+
+#### 🔹 2. Run one configuration via function call
+
+```python
+# Execute ONE configuration by calling the experiment function directly
+cfg_records=pd.read_csv(all_faiss_experiments_file_path)
+row = cfg_records.iloc[0].copy()
+cfg = ExperimentConfig(row)
+GlobalVars.set_segment_lenght_and_overlap(cfg._SEGMENT_LENGHT, cfg._SEGMENT_OVERLAP)
+faiss_results = faiss_tool.execute_configuration(cfg)
+```
+
+The `faiss_results` is a dictionary that includes detailed evaluation metrics, such as the confusion matrix and a full classification report.

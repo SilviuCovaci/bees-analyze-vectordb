@@ -17,8 +17,8 @@ def array_to_blob(vector):
 
 def extract_features_from_batch(df_partition, partition_info, global_config):
     
-    print(partition_info)
-    print(global_config)
+    #print(partition_info)
+    #print(global_config)
     partition_id = partition_info["number"]
     features2extract = global_config["features"]
     segment_lenght = global_config["segment_lenght"]
