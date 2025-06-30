@@ -378,3 +378,34 @@ faiss_results = faiss_tool.execute_configuration(cfg)
 ```
 
 The `faiss_results` is a dictionary that includes detailed evaluation metrics, such as the confusion matrix and a full classification report.
+
+### 🔁 Running All FAISS Experiments (with Repeats)
+
+You can run all experiment configurations from the CSV file in multiple rounds,  
+e.g. for statistical analysis or robustness testing.
+
+```python
+# Execute all configurations from the generated experiment file
+# Repeating the full experiment N times
+
+repeat_no = 5
+index_type = 'ivf_all'
+
+all_faiss_experiments_file_path = GlobalVars.experiments_path + f"all_faiss_experiments_index_{index_type}.csv"
+lib.combine_multiple_parameters_v3(all_faiss_experiments_file_path, ex_cfg.ivf_all)
+
+for i in range(repeat_no):
+    print(f"Execute round {i}")
+
+    #you can cache the indexes before if you want
+    #cache_all_faiss_indexes(all_faiss_experiments_file_path)
+    
+    faiss_experiments_output_file = GlobalVars.experiments_path + f"executed_faiss_experiments_index_{index_type}_round{i}.csv"
+    executor.process_all_configs_by_threads(exec_tool=faiss_tool, input_file_path=all_faiss_experiments_file_path, output_file_path=faiss_experiments_output_file, num_threads = 4, chunk_size = 20)
+```
+Each round will process all configurations in parallel (using threads) and save the results to a separate output file (one per round).
+
+> 🔄 **Note:** To extend the dataset across all segmentations of the same duration,  
+> you can use the special segmentation format `(10, all)`.  
+> This will combine all available segmentations with a length of 10 seconds, regardless of overlap,  
+> into a single dataset. This is useful for increasing sample diversity and improving generalization.
