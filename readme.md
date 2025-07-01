@@ -324,15 +324,12 @@ Example: generating all experiments for IVF indexes.
 ```python
 index_type = "ivf_all"
 
-faiss_experiments_output_file = GlobalVars.experiments_path + \
-    f"executed_faiss_experiments_index_{index_type}.csv"
-
 all_faiss_experiments_file_path = GlobalVars.experiments_path + \
     f"all_faiss_experiments_index_{index_type}.csv"
 
 lib.combine_multiple_parameters_v3(
     all_faiss_experiments_file_path,
-    ex_cfg.ivf_all  # predefined list of IVF-specific index configurations
+    getattr(ex_cfg, index_type)  # predefined list of IVF-specific index configurations
 )
 ```
 🛠️ You can customize or extend the list of index parameters in the ex_cfg.<index_type> dictionary.
@@ -400,3 +397,141 @@ Each round will process all configurations in parallel (using threads) and save 
 
 > 🔄 **Note:** To extend the dataset across all segmentations of the same duration, you can use the special segmentation format `(10, all)`.  
 > This will combine all available segmentations with a length of 10 seconds, regardless of overlap, into a single dataset. This is useful for increasing sample diversity and improving generalization.
+
+
+### ⚡  Milvus Experiments
+
+Milvus is a powerful open-source vector database optimized for high-performance similarity search at scale.  
+In this project, Milvus is used to evaluate vector-based classification and retrieval using a real vector database server environment.
+
+Unlike KNN or FAISS (which run entirely in Python or C++), Milvus runs as a **separate service**, typically inside a Docker container.  
+Experiments communicate with Milvus via the official Python API (`pymilvus`), using a custom helper module that abstracts collection creation, data insertion, and query execution.
+
+---
+
+### 🚀 Milvus Setup
+
+To run Milvus experiments, you need to install and start Milvus locally using Docker.  
+We recommend using the **standalone version**, which includes both the server and the metadata store in a single container.
+
+📄 Installation guide (official):  
+➡️ [Milvus Standalone – Windows (Docker)](https://milvus.io/docs/install_standalone-windows.md)
+
+> 💡 For Linux/macOS, see the dropdown menu on the same page for platform-specific instructions.
+
+Once Milvus is up and running, experiments can connect to the local server (`localhost:19530`) using the Python client.
+
+---
+
+### 🧩 Milvus Integration in this Project
+
+- Collection creation is done before running the experiments, based on feature configuration and vector schema.
+- Each experiment inserts vectors into a new or existing Milvus collection and performs similarity search queries.
+- The project includes a custom `milvus_helper.py` module to simplify all interactions (connect, create, insert, query, delete).
+
+The rest of the experimentation flow (configuration handling, metrics, batch execution) follows a structure similar to KNN and FAISS.
+
+### 🔧 Preparing Milvus Experiment Configurations
+
+Milvus requires a slightly different preparation flow compared to KNN and FAISS. Since Milvus is a standalone vector database running in a Docker container, all data must first be inserted into **collections**, which are indexed and queried via API.
+
+#### 🔹 1. Generate configurations to be tested
+
+In this project, we focused on the IVF index type and defined multiple IVF-specific configurations to be tested. 
+
+Example: generating all Milvus experiments using predefined IVF configurations.
+
+```python
+index_type="milvus_pq_10"
+all_milvus_experiments_file_path = GlobalVars.experiments_path + \
+    f"all_milvus_experiments_index_{index_type}.csv"
+lib.combine_multiple_parameters_v3(
+    all_milvus_experiments_file_path, 
+    getattr(ex_cfg, index_type) # predefined list of IVF-specific Milvus index configurations
+)
+```
+
+#### 🔹 2. Define the collection(s)
+
+#### 🔹 2. Define the collection(s)
+
+In the approach used in this project, a separate Milvus collection is created for each unique combination of:
+
+- segmentation (`segment_lenght`, `segment_overlap`)
+- extracted feature (e.g., `pe-mfcc_40`)
+- aggregation method (e.g., `mean`, `mean_iqr25`)
+
+The collection name is generated based on these parameters.  For example: `pe_mfcc_40_vectors_mean_iqr25_len10_overlapall`.
+
+Collections can be created either individually or iteratively (in batch), prior to running the actual experiments.  This ensures that all data is preloaded and indexed before evaluation begins.
+
+The following example demonstrates how to define a configuration and populate the corresponding Milvus collection:
+
+```python
+def build_configuration_all10sec():
+    cfg_dict = {
+        "segment_lenght": 10,
+        "segment_overlap": "all",
+        "feature": "pe-mfcc_40",
+        "vector_operation": "mean",
+        "metric_type": "COSINE",
+        "index_params": {"index_type": "IVF_FLAT"},
+        "normalize": 1,
+        "vote_type": "uniform",
+        "neighbors": 15,
+    }
+
+    cfg = ExperimentConfig(cfg_dict)
+    return milvus_tool.create_and_fill_collection_for_specified_configuration(cfg, True)
+
+# Create and populate the collection
+build_configuration_all10sec()
+```
+The collection will be indexed using the default IVF_FLAT index, and populated with vectors extracted for that configuration.
+
+### ▶️ Running Milvus Experiments
+
+Unlike KNN and FAISS, Milvus experiments are currently executed only via **library function calls** — no separate process-based execution was implemented in this version.
+
+To run a single experiment from a configuration row:
+
+```python
+cfg = ExperimentConfig(row)
+GlobalVars.set_segment_lenght_and_overlap(cfg._SEGMENT_LENGHT, cfg._SEGMENT_OVERLAP)
+
+metrics_json = milvus_tool.execute_configuration(cfg)
+new_row = lib.extract_experiment_results(
+    new_row=row,
+    tool_results=metrics_json,
+    process_key=f"row_{index}",
+    error=""
+)
+```
+For full batch execution of all experiment defined in the previously generated configuration file, see the notebook: `milvus_playground.ipynb`.
+
+### 📊 Results & Analysis
+
+Each experiment outputs a result row that includes classification metrics (e.g., accuracy, per-class precision)  
+as well as performance indicators (training/prediction time, indexing statistics if applicable).
+
+Results are saved to CSV files for each method:
+- `executed_knn_configs_results_*.csv`
+- `executed_faiss_experiments_index_*.csv`
+- `executed_milvus_experiments_index_*.csv`
+
+There are dedicated Jupyter notebooks for result analysis:
+- `knn_results_analyze.ipynb`
+- `faiss_results_analyze.ipynb` *(can also be used to analyze Milvus results)*
+
+Each notebook includes:
+- filtering by configuration parameters,
+- grouping and sorting by accuracy or other metrics,
+- visualizations (confusion matrix, accuracy distribution, pie charts, bar plots, etc.)
+
+> 🔍 These tools help identify the best-performing configurations and understand the impact of various parameters.
+
+
+
+
+
+
