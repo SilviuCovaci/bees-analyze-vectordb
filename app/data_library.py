@@ -298,3 +298,29 @@ def load_training_and_testing_data_for_vectordb(cfg):
     cfg._NORMALIZE_VECTOR = do_normalize
     return all_X_train, all_y_train, all_X_test, all_y_test
 
+
+def load_training_and_testing_data_for_vectordb_with_folds(cfg, num_folds = 5):
+    do_normalize = cfg._NORMALIZE_VECTOR
+    cfg._NORMALIZE_VECTOR = False
+
+    orginal_overlap = cfg._SEGMENT_OVERLAP
+    if (cfg._SEGMENT_OVERLAP == 'all'):
+        overlaps = GlobalVars.get_all_overlaps_available(segment_lenght=cfg._SEGMENT_LENGHT)
+    else: 
+        overlaps = [cfg._SEGMENT_OVERLAP]
+    
+    all_data = []
+
+    for overlap in overlaps:
+        cfg._SEGMENT_OVERLAP = overlap
+        data = load_and_prepare_data_for_vector_db(cfg, train_or_test="all")
+        all_data.append(data)
+    
+    all_data = pd.concat(all_data, ignore_index=True)
+    
+    cfg._SEGMENT_OVERLAP = orginal_overlap
+    cfg._NORMALIZE_VECTOR = do_normalize
+    
+    processed_records = lib.splitdata_stratified_kfold(all_data, num_folds=num_folds)
+    return processed_records
+    

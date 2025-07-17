@@ -63,10 +63,13 @@ def process_chunk(chunk, output_file_path, exec_tool):
     
     processed_rows = chunk.apply(lambda row: launch_execute_configurations_as_process(exec_tool=exec_tool, row=row, debug_mode=debug_mode), axis=1) 
     processed_rows = processed_rows[processed_rows["skipped"] == False]
-    with write_lock:  # Evităm problemele de concurență la scriere
-        processed_rows.to_csv(output_file_path, mode='a', header=False, index=False)
-        
-    with progress_lock:  # Asigură actualizarea corectă a tqdm
+    try:
+        with write_lock:
+            processed_rows[lib.result_fields()].to_csv(output_file_path, mode='a', header=False, index=False)
+                
+    except Exception as ex:
+        print("ex:", ex)
+    with progress_lock:  
         progress_bar.update(len(chunk))    
         
 def process_all_configs_by_threads(input_file_path, output_file_path, exec_tool, num_threads = 10, chunk_size = 200):
@@ -77,7 +80,8 @@ def process_all_configs_by_threads(input_file_path, output_file_path, exec_tool,
         
     init_locks(total_rows)
 
-    df_sample = pd.read_csv(input_file_path, nrows=0)
+    #df_sample = pd.read_csv(input_file_path, nrows=0)
+    df_sample = pd.DataFrame(columns=lib.result_fields())
     df_sample.to_csv(output_file_path, mode="w", index=False)  # Scriem doar header-ul 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         chunkId = 0
@@ -102,7 +106,7 @@ def launch_execute_configurations_as_process(exec_tool, row, execute_probability
     cfg_dict["normalize"] = do_normalize
     cfg_dict['balanced_type'] = 1
 
-    process_key, tool_results, error =  exec_tool.execute_configuration_as_process(cfg_dict, save_results=0, display_std_out=debug_mode)
+    process_key, tool_results, error =  exec_tool.execute_configuration_as_process(cfg_dict, save_results=0, row_index=str(row.name), display_std_out=debug_mode)
 
     new_row = lib.extract_experiment_results(new_row=new_row, tool_results=tool_results, process_key=process_key, error=error)
     return new_row

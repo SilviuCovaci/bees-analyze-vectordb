@@ -6,6 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 from sklearn.metrics import ConfusionMatrixDisplay
 
 import hashlib
@@ -69,6 +70,7 @@ class ExperimentConfig:
         self._USE_REGULAR_SEGMENTS = cfg_dict.get("include_regular_segments", True)
         self._ROW_KEY = cfg_dict.get('row_key', "")       
         self._USE_CACHE = cfg_dict.get('use_cache', CACHING_INDEX)       
+        self._NUM_FOLDS = cfg_dict.get('num_folds', 0)
         self.update_collection_name()
 
     def update_collection_name(self, segment_length = None, overlap = None):
@@ -377,6 +379,27 @@ def splitdata_balanced(df):
         df.loc[df['file_name_prefix'].isin(train_segments) & (df['queen status'] == status), 'train2'] = 1
     return df
         
+def splitdata_stratified_kfold(df, num_folds=5):
+
+    # Adăugăm coloanele pentru fiecare fold
+    for fold in range(num_folds):
+        df['train' + str(fold)] = 0  # Inițializăm coloanele pentru fiecare fold
+
+
+    for status in df['queen_status'].unique():
+        subset = df[df['queen_status'] == status]
+        unique_file_name_prefix = subset['file_name_prefix'].unique()
+        kf = KFold(n_splits=num_folds, shuffle=True, random_state=RANDOM_SEED)
+        
+        for fold, (train_idx, val_idx) in enumerate(kf.split(unique_file_name_prefix)):
+            train_file_name_prefixes = [unique_file_name_prefix[i] for i in train_idx]
+            
+            #set column trainings for each fold
+            df.loc[df['file_name_prefix'].isin(train_file_name_prefixes) & (df['queen_status'] == status), 'train'+ str(fold)] = 1
+
+    
+    return df
+
 def mark_train_records_in_dataframe(new_df, save_path = False):
     df_original=pd.read_csv(GlobalVars.csv_data_sync_path )
     new_df = new_df.merge(df_original[['segment_file', 'train1', 'train2']], on='segment_file', how='left', suffixes=(None, '_new'))
@@ -931,15 +954,22 @@ def mem_MB():
 def mem_KB():
     return process.memory_info().rss / 1024   # în KB
 
+def result_fields():
+    fields = ['segment_lenght','segment_overlap','feature','vector_operation','metric_type','vote_type','neighbors','index_params', 
+            'skipped', 'accuracy', 'precision_0', 'precision_1', 'precision_2', 'precision_3', 'training_set_size', 'testing_set_size', 
+            'train_elapsed_time',  'predict_elapsed_time', 'train_used_memory', 'predict_used_memory', 'row_key']
+    return fields
+
+
 def extract_experiment_results(new_row, tool_results, process_key, error):
     if (tool_results is not None):
-        classification_report = tool_results['classification_report']
+        classification_report = tool_results.get('classification_report', {})
         new_row["skipped"] = False
         new_row['neighbors'] = tool_results["neighbors"]
         new_row['vote_type'] = tool_results["vote_type"]
         new_row['accuracy'] = tool_results["accuracy_score"]
         for idx in range(4):
-            new_row[f'precision_{idx}'] = classification_report[f'{idx}']['precision']
+            new_row[f'precision_{idx}'] = classification_report.get(f'{idx}', {}).get('precision', "")
         new_row['training_set_size'] = tool_results["training_set_size"]
         new_row['testing_set_size'] = tool_results["testing_set_size"]
         new_row['train_elapsed_time'] = tool_results["train_elapsed_time"]

@@ -275,10 +275,50 @@ def execute_and_test_faiss(X_train, y_train, X_test, y_test, cfg):
     }
     return metrics_json, y_pred
 
-
+def execute_configuration_kfold(cfg):
     
+    processed_records = data_lib.load_training_and_testing_data_for_vectordb_with_folds(cfg=cfg, num_folds = cfg._NUM_FOLDS)
+    #print("execute_configuration_kfold, records=" , len(processed_records))
+    
+    fold_results = []
+    for fold in range(cfg._NUM_FOLDS):
+        print(f"Fold={fold}")
+        train_records = processed_records[processed_records[f'train{fold}'] == 1]
+        test_records = processed_records[processed_records[f'train{fold}'] == 0]
+        X_train = train_records['vector_data']
+        X_train = np.array(X_train.tolist())
+        y_train = train_records['queen_status']
+        X_test = test_records['vector_data']
+        X_test = np.array(X_test.tolist())
+        y_test = test_records['queen_status']
+        print("Size of train=" + str(len(X_train)))
+        print("Size of test=" + str(len(X_test)))
+        
+        metrics_json, _ = execute_and_test_faiss(X_train, y_train, X_test, y_test, cfg)
+        fold_results.append(metrics_json)
+        
+    metrics_json = {
+        "neighbors": fold_results[0]["neighbors"],
+        "vote_type": fold_results[0]["vote_type"],
+        "accuracy_score": sum(d["accuracy_score"] for d in fold_results) / cfg._NUM_FOLDS,
+        "confusion_matrix": {},
+        "classification_report": {},
+        "training_set_size": sum(d["training_set_size"] for d in fold_results) / cfg._NUM_FOLDS,
+        "testing_set_size": sum(d["testing_set_size"] for d in fold_results) / cfg._NUM_FOLDS,
+        "train_elapsed_time": sum(d["train_elapsed_time"] for d in fold_results),
+        "predict_elapsed_time": sum(d["predict_elapsed_time"] for d in fold_results),
+        "train_used_memory": sum(d["train_used_memory"] for d in fold_results)/ cfg._NUM_FOLDS,
+        "predict_used_memory": sum(d["predict_used_memory"] for d in fold_results)/ cfg._NUM_FOLDS,
+    } 
+
+    return metrics_json
+
 def execute_configuration(cfg):
+    print(f"num folds={cfg._NUM_FOLDS}")
+    if (cfg._NUM_FOLDS > 1):
+        return execute_configuration_kfold(cfg)
     X_train, y_train, X_test, y_test = data_lib.load_training_and_testing_data_for_vectordb(cfg=cfg)
+    print("x train size:", len(X_train), "; xtest size:", len(X_test))
     
     metrics_json, y_pred = execute_and_test_faiss(X_train, y_train, X_test, y_test, cfg)
     return metrics_json
